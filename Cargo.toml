@@ -1,0 +1,13 @@
+[package]
+name = "termdraw"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[dev-dependencies]
+libc = "0.2.102"
+rand = "0.8.4"
+termios = "0.3.3"
