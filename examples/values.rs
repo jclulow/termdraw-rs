@@ -250,7 +250,7 @@ pub fn main() {
                      * Every orb should decay at a faster rate once the user has
                      * asked us to quit:
                      */
-                    orbs.iter_mut().for_each(|orb| orb.rate = 6);
+                    orbs.iter_mut().for_each(|orb| orb.rate = 4);
                     quit = true;
                     break;
                 }
