@@ -1,14 +1,15 @@
 use super::region::*;
 
+use std::fmt::Write;
+
 pub struct Draw {
+    started: bool,
     screen: Region,
 }
 
 impl Draw {
     pub fn new(width: usize, height: usize) -> Draw {
-        Draw {
-            screen: Region::new(width, height),
-        }
+        Draw { started: false, screen: Region::new(width, height) }
     }
 
     pub fn height(&self) -> usize {
@@ -19,11 +20,28 @@ impl Draw {
         self.screen.width()
     }
 
+    pub fn cleanup(self) -> String {
+        /*
+         * Move the cursor to the bottom left of the screen and turn it back on,
+         * so that the shell prompt ends up in the right place.
+         */
+        format!("\x1b[{};{}f\x1b[?25h", self.height(), 1)
+    }
+
     pub fn apply(&mut self, r: &Region) -> String {
         let height = self.screen.height();
         let width = self.screen.width();
 
         let mut out = String::new();
+
+        if !self.started {
+            /*
+             * For the first frame, clear the whole screen and disable the
+             * cursor to match the contents of the initial cached screen.
+             */
+            write!(out, "\x1b[H\x1b[2J\x1b[?25l").unwrap();
+            self.started = true;
+        }
 
         let refresh = false;
         let mut contig = false;
@@ -39,11 +57,7 @@ impl Draw {
 
             while x < width {
                 let oc = self.screen.cell_mut(x, y).unwrap();
-                let nc = if let Some(nc) = r.cell(x, y) {
-                    nc
-                } else {
-                    &def
-                };
+                let nc = if let Some(nc) = r.cell(x, y) { nc } else { &def };
 
                 if !redo && oc == nc && !refresh {
                     contig = false;
@@ -116,6 +130,13 @@ impl Draw {
                             attrs.push(5);
                             attrs.push(c);
                         }
+                        Colour::RGB(r, g, b) => {
+                            attrs.push(38);
+                            attrs.push(2);
+                            attrs.push(r);
+                            attrs.push(g);
+                            attrs.push(b);
+                        }
                     }
 
                     match f.bg {
@@ -125,6 +146,13 @@ impl Draw {
                             attrs.push(48);
                             attrs.push(5);
                             attrs.push(c);
+                        }
+                        Colour::RGB(r, g, b) => {
+                            attrs.push(48);
+                            attrs.push(2);
+                            attrs.push(r);
+                            attrs.push(g);
+                            attrs.push(b);
                         }
                     }
 

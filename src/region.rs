@@ -1,7 +1,14 @@
+#[derive(Clone, Copy, PartialEq)]
+pub struct Point {
+    x: usize,
+    y: usize,
+}
+
 pub struct Region {
     width: usize,
     height: usize,
     rows: Vec<Vec<Cell>>,
+    cursor: Option<Point>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -9,6 +16,7 @@ pub enum Colour {
     Default,
     C16(u8),
     C256(u8),
+    RGB(u8, u8, u8),
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -39,11 +47,7 @@ pub struct Cell {
 
 impl Default for Cell {
     fn default() -> Self {
-        Cell {
-            contents: ' ',
-            width: 1,
-            format: Format::default(),
-        }
+        Cell { contents: ' ', width: 1, format: Format::default() }
     }
 }
 
@@ -109,11 +113,7 @@ impl Region {
             rows.push(col);
         }
 
-        Region {
-            width,
-            height,
-            rows,
-        }
+        Region { width, height, rows, cursor: None }
     }
 
     pub fn cell(&self, x: usize, y: usize) -> Option<&Cell> {
@@ -167,7 +167,13 @@ impl Region {
         x - ox
     }
 
-    pub fn strf(&mut self, mut x: usize, y: usize, s: &str, f: &Format) -> usize {
+    pub fn strf(
+        &mut self,
+        mut x: usize,
+        y: usize,
+        s: &str,
+        f: &Format,
+    ) -> usize {
         let ox = x;
 
         /* XXX graphemes? */
@@ -192,5 +198,13 @@ impl Region {
                 self.rows[y][x].clear();
             }
         }
+    }
+
+    pub fn cursor(&self) -> Option<Point> {
+        self.cursor
+    }
+
+    pub fn set_cursor(&mut self, curs: Option<Point>) {
+        self.cursor = curs;
     }
 }

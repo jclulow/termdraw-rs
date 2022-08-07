@@ -1,11 +1,11 @@
-use std::collections::HashSet;
-use std::time::{Instant, Duration};
-use std::sync::mpsc;
-use std::io::Read;
-use std::os::unix::io::{RawFd, AsRawFd};
-use termios::{TCIOFLUSH, TCSANOW, TCSADRAIN};
 use rand::prelude::*;
+use std::collections::HashSet;
+use std::io::Read;
 use std::mem::MaybeUninit;
+use std::os::unix::io::{AsRawFd, RawFd};
+use std::sync::mpsc;
+use std::time::{Duration, Instant};
+use termios::{TCIOFLUSH, TCSADRAIN, TCSANOW};
 
 struct Orb {
     word: String,
@@ -31,11 +31,7 @@ const MISSION: &[&str] = &[
     "change computing forever",
 ];
 
-const PRINCIPLES: &[&str] = &[
-    "integrity",
-    "honesty",
-    "decency",
-];
+const PRINCIPLES: &[&str] = &["integrity", "honesty", "decency"];
 
 const VALUES: &[&str] = &[
     "candor",
@@ -55,11 +51,15 @@ const VALUES: &[&str] = &[
     "versatility",
 ];
 
-const GREY_RAMP: &[u8] = &[ 232, 233, 234, 235, 236, 237, 238, 239, 240, 241,
-242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, ];
-const BLUE_RAMP: &[u8] = &[ 17, 18, 18, 19, 19, 20, 20, 21, 27, 32, 33,
-    38, 39, 44, 45, 45, 81, 81, 51, 51, 123, 123, ];
-const GREEN_RAMP: &[u8] = &[ 22, 22, 22, 28, 28, 34, 34, 40, 40, 46, 46, 46, ];
+const GREY_RAMP: &[u8] = &[
+    232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246,
+    247, 248, 249, 250, 251, 252, 253, 254, 255,
+];
+const BLUE_RAMP: &[u8] = &[
+    17, 18, 18, 19, 19, 20, 20, 21, 27, 32, 33, 38, 39, 44, 45, 45, 81, 81, 51,
+    51, 123, 123,
+];
+const GREEN_RAMP: &[u8] = &[22, 22, 22, 28, 28, 34, 34, 40, 40, 46, 46, 46];
 
 fn emit(io: &mut dyn std::io::Write, data: &str) -> std::io::Result<()> {
     io.write_all(data.as_bytes())?;
@@ -89,21 +89,17 @@ pub fn main() {
     let mut draw = termdraw::Draw::new(sz.width, sz.height);
     let mut r = termdraw::Region::new(draw.width(), draw.height());
 
-    print!("\x1b[H\x1b[2J\x1b[?25l");
-
     let msg = "press q to quit...";
-    let mut orbs = vec![
-        Orb {
-            x: (draw.width() - msg.len()) / 2,
-            y: draw.height() / 2,
-            word: msg.into(),
-            active: true,
-            frame: 0,
-            rate: 1,
-            starter: true,
-            ramp: BLUE_RAMP,
-        }
-    ];
+    let mut orbs = vec![Orb {
+        x: (draw.width() - msg.len()) / 2,
+        y: draw.height() / 2,
+        word: msg.into(),
+        active: true,
+        frame: 0,
+        rate: 1,
+        starter: true,
+        ramp: BLUE_RAMP,
+    }];
     let mut inuse = HashSet::new();
     let mut quit = false;
     let mut go = false;
@@ -120,8 +116,10 @@ pub fn main() {
         loop {
             match br.read(&mut buf) {
                 Ok(0) => return,
-                Ok(1) => if tx.send(buf[0]).is_err() {
-                    return;
+                Ok(1) => {
+                    if tx.send(buf[0]).is_err() {
+                        return;
+                    }
                 }
                 Ok(n) => panic!("{} is not the correct number of bytes", n),
                 _ => return,
@@ -261,6 +259,6 @@ pub fn main() {
     /*
      * Clean up the terminal and restore the original termios attributes:
      */
-    emit(&mut stdout, &format!("\x1b[{};{}f\x1b[?25h", draw.height(), 1)).ok();
+    emit(&mut stdout, &draw.cleanup()).ok();
     termios::tcsetattr(stdout.as_raw_fd(), TCSADRAIN, &orig_termios).unwrap();
 }
