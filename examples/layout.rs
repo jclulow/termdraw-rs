@@ -1,7 +1,5 @@
-use rand::prelude::*;
 use chrono::prelude::*;
 use chrono_tz::Tz;
-use std::collections::HashSet;
 use std::io::Read;
 use std::mem::MaybeUninit;
 use std::os::unix::io::{AsRawFd, RawFd};
@@ -42,11 +40,15 @@ fn getwinsz(fd: RawFd) -> std::io::Result<WinSize> {
 }
 
 pub fn main() {
-    let mut rng = rand::thread_rng();
     let mut stdout = std::io::stdout();
     let sz = getwinsz(stdout.as_raw_fd()).unwrap();
 
     let mut draw = termdraw::Draw::new(sz.width, sz.height);
+    draw.set_line_glitch(false);
+    {
+        let (r, g, b) = GREEN_DARK.as_rgb();
+        draw.preamble(&format!("\x1b[48;2;{};{};{}m\x0c", r, g, b));
+    }
     let mut r = termdraw::Region::new(draw.width(), draw.height());
 
     let tz: Tz = "US/Pacific".parse().unwrap();
@@ -89,7 +91,6 @@ pub fn main() {
     termios::tcsetattr(stdout.as_raw_fd(), TCSANOW, &termios).unwrap();
     termios::tcflush(stdout.as_raw_fd(), TCIOFLUSH).unwrap();
 
-    let mut fc = 0;
     let mut deadline = Instant::now();
     'outer: loop {
         if quit {
@@ -98,8 +99,6 @@ pub fn main() {
         if !go {
             break;
         }
-
-        fc += 10;
 
         r.clear();
 
@@ -144,15 +143,15 @@ pub fn main() {
         let msgr = "PROGRAMMING STATION";
 
         r.strf(3, 1, msgl, &f);
-        r.strf(r.width() - 2 - msgr.len(), 1, msgr, &f);
-
+        r.strf(r.width() - 3 - msgr.len(), 1, msgr, &f);
 
         let ftrl = format!("STATION: {}", nodename.to_ascii_uppercase());
         r.strf(3, r.height() - 2, &ftrl, &yf);
 
         let now = Utc::now().with_timezone(&tz);
-        let ftrr = now.format("%Y-%m-%d %H:%M:%S").to_string();
-        r.strf(r.width() - 2 - ftrr.len(), r.height() - 2, &ftrr, &yf);
+        let ftrr =
+            now.format("%Y-%b-%d %H:%M:%S").to_string().to_ascii_uppercase();
+        r.strf(r.width() - 3 - ftrr.len(), r.height() - 2, &ftrr, &yf);
 
         let offs = r.width() - oxidew - 1;
         let hoff = r.height() - hf - oxide.len() - 2;
@@ -169,6 +168,11 @@ pub fn main() {
             }
         }
 
+        let offs = 10;
+        let hoff = 15;
+        r.strf(offs, hoff, "Serial Number: OX-1000-023-01", &ff);
+        r.strf(offs, hoff + 2, "Programming underway...", &ff);
+
         let out = draw.apply(&r);
         if !emit(&mut stdout, &out).is_ok() {
             break;
@@ -179,7 +183,7 @@ pub fn main() {
          * current frame.
          */
         let now = Instant::now();
-        deadline = deadline.checked_add(Duration::from_millis(80)).unwrap();
+        deadline = deadline.checked_add(Duration::from_millis(100)).unwrap();
         if deadline.lt(&now) {
             /*
              * The selected target time is already in the past, which implies

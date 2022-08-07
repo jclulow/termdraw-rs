@@ -1,15 +1,28 @@
 use super::region::*;
 
-use std::fmt::Write;
-
 pub struct Draw {
-    started: bool,
+    preamble: Vec<String>,
     screen: Region,
+    line_glitch: bool,
 }
 
 impl Draw {
     pub fn new(width: usize, height: usize) -> Draw {
-        Draw { started: false, screen: Region::new(width, height) }
+        Draw {
+            screen: Region::new(width, height),
+            /*
+             * For the first frame, clear the whole screen and disable the
+             * cursor to match the contents of the initial cached screen.
+             */
+            preamble: vec![
+                "\x1b[H\x1b[2J\x1b[?25l".into(),
+            ],
+            line_glitch: true,
+        }
+    }
+
+    pub fn set_line_glitch(&mut self, line_glitch: bool) {
+        self.line_glitch = line_glitch;
     }
 
     pub fn height(&self) -> usize {
@@ -28,19 +41,18 @@ impl Draw {
         format!("\x1b[{};{}f\x1b[?25h", self.height(), 1)
     }
 
+    pub fn preamble(&mut self, s: &str) {
+        self.preamble.push(s.to_string());
+    }
+
     pub fn apply(&mut self, r: &Region) -> String {
         let height = self.screen.height();
         let width = self.screen.width();
 
         let mut out = String::new();
 
-        if !self.started {
-            /*
-             * For the first frame, clear the whole screen and disable the
-             * cursor to match the contents of the initial cached screen.
-             */
-            write!(out, "\x1b[H\x1b[2J\x1b[?25l").unwrap();
-            self.started = true;
+        for preamble in self.preamble.drain(..) {
+            out.push_str(&preamble);
         }
 
         let refresh = false;
@@ -56,6 +68,15 @@ impl Draw {
             let mut x = 0;
 
             while x < width {
+                if !self.line_glitch && y == height - 1 && x == width - 1 {
+                    /*
+                     * If this terminal does not support the VT100 line glitch
+                     * (aka "xenl") then we cannot draw into the bottom-right
+                     * cell without inadvertently wrapping a line and corrupting
+                     * the display.
+                     */
+                    break;
+                }
                 let oc = self.screen.cell_mut(x, y).unwrap();
                 let nc = if let Some(nc) = r.cell(x, y) { nc } else { &def };
 

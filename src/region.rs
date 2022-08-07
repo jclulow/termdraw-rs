@@ -19,6 +19,15 @@ pub enum Colour {
     RGB(u8, u8, u8),
 }
 
+impl Colour {
+    pub fn as_rgb(&self) -> (u8, u8, u8) {
+        match self {
+            Colour::RGB(r, g, b) => (*r, *g, *b),
+            _ => panic!("wrong type"),
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq)]
 pub struct Format {
     pub bold: bool,
