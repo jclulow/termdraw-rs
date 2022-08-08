@@ -158,6 +158,7 @@ impl Draw {
                             attrs.push(g);
                             attrs.push(b);
                         }
+                        Colour::UseExisting => panic!("should not get here"),
                     }
 
                     match f.bg {
@@ -175,6 +176,7 @@ impl Draw {
                             attrs.push(g);
                             attrs.push(b);
                         }
+                        Colour::UseExisting => panic!("should not get here"),
                     }
 
                     let s = attrs

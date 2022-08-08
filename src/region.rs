@@ -17,6 +17,7 @@ pub enum Colour {
     C16(u8),
     C256(u8),
     RGB(u8, u8, u8),
+    UseExisting,
 }
 
 impl Colour {
@@ -99,7 +100,17 @@ impl Cell {
     }
 
     pub fn set_format(&mut self, f: &Format) {
-        self.format = *f;
+        let Format { bold, reverse, fg, bg } = f;
+        self.format.bold = *bold;
+        self.format.reverse = *reverse;
+        match bg {
+            Colour::UseExisting => (),
+            other => self.format.bg = *other,
+        }
+        match fg {
+            Colour::UseExisting => (),
+            other => self.format.fg = *other,
+        }
     }
 
     pub fn set_from(&mut self, other: &Cell) {

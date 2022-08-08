@@ -9,7 +9,7 @@ use termdraw::Colour;
 use termios::{TCIOFLUSH, TCSADRAIN, TCSANOW};
 
 const YELLOW: Colour = Colour::RGB(0xF5, 0xCF, 0x75);
-const OFF_WHITE: Colour = Colour::RGB(0xD0, 0xD0, 0xD0);
+const OFF_WHITE: Colour = Colour::RGB(0xE0, 0xE0, 0xE0);
 const GREEN_LIGHT: Colour = Colour::RGB(0x48, 0xD5, 0x97);
 const GREEN_DARK: Colour = Colour::RGB(0x11, 0x27, 0x25);
 const GREEN_DARKEST: Colour = Colour::RGB(0x0B, 0x14, 0x18);
@@ -168,10 +168,14 @@ pub fn main() {
             }
         }
 
+        let mut ftxt = termdraw::Format::default();
+        ftxt.bg = Colour::UseExisting;
+        ftxt.fg = OFF_WHITE;
+
         let offs = 10;
         let hoff = 15;
-        r.strf(offs, hoff, "Serial Number: OX-1000-023-01", &ff);
-        r.strf(offs, hoff + 2, "Programming underway...", &ff);
+        r.strf(offs, hoff, "Serial Number: OX-1000-023-01", &ftxt);
+        r.strf(offs, hoff + 2, "Programming underway...", &ftxt);
 
         let out = draw.apply(&r);
         if !emit(&mut stdout, &out).is_ok() {
