@@ -14,9 +14,7 @@ impl Draw {
              * For the first frame, clear the whole screen and disable the
              * cursor to match the contents of the initial cached screen.
              */
-            preamble: vec![
-                "\x1b[H\x1b[2J\x1b[?25l".into(),
-            ],
+            preamble: vec!["\x1b[H\x1b[2J\x1b[?25l".into()],
             line_glitch: true,
         }
     }

@@ -1,5 +1,7 @@
 use chrono::prelude::*;
 use chrono_tz::Tz;
+use rand::prelude::*;
+use std::collections::VecDeque;
 use std::io::Read;
 use std::mem::MaybeUninit;
 use std::os::unix::io::{AsRawFd, RawFd};
@@ -10,6 +12,7 @@ use termios::{TCIOFLUSH, TCSADRAIN, TCSANOW};
 
 const YELLOW: Colour = Colour::RGB(0xF5, 0xCF, 0x75);
 const OFF_WHITE: Colour = Colour::RGB(0xE0, 0xE0, 0xE0);
+const RED: Colour = Colour::RGB(255, 145, 173);
 const GREEN_LIGHT: Colour = Colour::RGB(0x48, 0xD5, 0x97);
 const GREEN_DARK: Colour = Colour::RGB(0x11, 0x27, 0x25);
 const GREEN_DARKEST: Colour = Colour::RGB(0x0B, 0x14, 0x18);
@@ -40,6 +43,7 @@ fn getwinsz(fd: RawFd) -> std::io::Result<WinSize> {
 }
 
 pub fn main() {
+    let mut rng = rand::thread_rng();
     let mut stdout = std::io::stdout();
     let sz = getwinsz(stdout.as_raw_fd()).unwrap();
 
@@ -58,6 +62,13 @@ pub fn main() {
 
     let mut quit = false;
     let mut go = true;
+
+    let mut ring: VecDeque<(String, u32)> = Default::default();
+    let mut ringlast = Instant::now();
+    let tasks = include_str!("simcity.txt")
+        .lines()
+        .map(|l| l.trim().to_ascii_lowercase().to_string())
+        .collect::<Vec<_>>();
 
     /*
      * Create a thread to process input from stdin.
@@ -98,6 +109,33 @@ pub fn main() {
         }
         if !go {
             break;
+        }
+
+        let now = Instant::now();
+        if rng.gen_bool(0.30)
+            || now.saturating_duration_since(ringlast).as_millis() > 4000
+        {
+            let dtpfx = Utc::now()
+                .with_timezone(&tz)
+                .format("%Y-%b-%d %H:%M:%S")
+                .to_string()
+                .to_ascii_uppercase();
+            let level = rng.gen::<f64>();
+            let level = if level < 0.8 {
+                0
+            } else if level < 0.9 {
+                1
+            } else {
+                2
+            };
+            ring.push_back((
+                format!("{} {}", dtpfx, tasks[rng.gen_range(0..tasks.len())],),
+                level,
+            ));
+            ringlast = now;
+        }
+        while ring.len() > 1000 {
+            ring.pop_front();
         }
 
         r.clear();
@@ -171,11 +209,37 @@ pub fn main() {
         let mut ftxt = termdraw::Format::default();
         ftxt.bg = Colour::UseExisting;
         ftxt.fg = OFF_WHITE;
+        let mut fwarn = ftxt.clone();
+        fwarn.fg = YELLOW;
+        let mut fcrit = ftxt.clone();
+        fcrit.fg = RED;
 
         let offs = 10;
-        let hoff = 15;
+        let hoff = 6;
         r.strf(offs, hoff, "Serial Number: OX-1000-023-01", &ftxt);
         r.strf(offs, hoff + 2, "Programming underway...", &ftxt);
+
+        let mut boxheight = r.height() - hf - 2 - (hoff + 4);
+        let minidx = if ring.len() > boxheight {
+            ring.len() - boxheight
+        } else {
+            boxheight = ring.len();
+            0
+        };
+
+        for y in 0..boxheight {
+            let (msg, level) = &ring[minidx + y];
+            r.strf(
+                offs + 5,
+                y + (hoff + 4),
+                msg,
+                match *level {
+                    0 => &ftxt,
+                    1 => &fwarn,
+                    _ => &fcrit,
+                },
+            );
+        }
 
         let out = draw.apply(&r);
         if !emit(&mut stdout, &out).is_ok() {
